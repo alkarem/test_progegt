@@ -116,6 +116,23 @@ def _authorize_step(session: Session, principal: Principal, handler: DocHandler,
     return on_behalf_of
 
 
+def _link(handler: DocHandler, doc) -> str:
+    return f"/documents/{handler.source_type}/{doc.id}"
+
+
+def _notify_step(session: Session, handler: DocHandler, doc, inst: WorkflowInstance, step: WorkflowStep) -> None:
+    from app.modules.alerts.service import notify, users_with_permission
+    users = [u for u in users_with_permission(session, f"{handler.perm_prefix}.{step.action}") if u != inst.created_by]
+    notify(session, users, f"بانتظار إجرائك: {handler.label} {handler.doc_no(doc)}",
+           body=f"المرحلة: {step.name}", link=_link(handler, doc))
+
+
+def _notify_creator(session: Session, handler: DocHandler, doc, title: str, body: str | None = None) -> None:
+    from app.modules.alerts.service import notify
+    notify(session, [doc.created_by], f"{title}: {handler.label} {handler.doc_no(doc)}", body=body,
+           link=_link(handler, doc))
+
+
 def _safe_simulate(session: Session, handler: DocHandler, doc) -> dict:
     try:
         return handler.simulate(session, doc)
@@ -159,6 +176,9 @@ def submit(session: Session, principal: Principal, handler: DocHandler, doc, ip:
     if handler.on_status:
         handler.on_status(session, doc)
     session.flush()
+    from app.modules.alerts.service import after_submit
+    after_submit(session, handler.source_type, doc, handler.doc_no(doc))
+    _notify_step(session, handler, doc, inst, steps[0])
     return inst
 
 
@@ -187,6 +207,9 @@ def approve(session: Session, principal: Principal, handler: DocHandler, doc, *,
                                                       "override_used": result.override_used})
         inst.state, inst.current_step_id, inst.finished_at = "COMPLETED", None, _now()
         session.flush()
+        from app.modules.alerts.service import after_posting
+        after_posting(session, handler.source_type, doc, [e.budget_line_id for e in result.entries])
+        _notify_creator(session, handler, doc, "تم الاعتماد والترحيل")
         return inst
 
     check = None
@@ -212,6 +235,7 @@ def approve(session: Session, principal: Principal, handler: DocHandler, doc, *,
     if handler.on_status:
         handler.on_status(session, doc)
     session.flush()
+    _notify_step(session, handler, doc, inst, steps[idx + 1])
     return inst
 
 
@@ -234,6 +258,7 @@ def reject(session: Session, principal: Principal, handler: DocHandler, doc, com
     if handler.on_cancel:
         handler.on_cancel(session, doc)
     session.flush()
+    _notify_creator(session, handler, doc, "رُفض", comment)
     return inst
 
 
@@ -250,6 +275,7 @@ def return_to_creator(session: Session, principal: Principal, handler: DocHandle
     if handler.on_status:
         handler.on_status(session, doc)
     session.flush()
+    _notify_creator(session, handler, doc, "أُرجع للتعديل", comment)
     return inst
 
 

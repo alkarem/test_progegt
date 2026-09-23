@@ -47,3 +47,18 @@ PositiveMoney = Annotated[
     Decimal, BeforeValidator(to_money), AfterValidator(_positive),
     PlainSerializer(lambda v: f"{v:.3f}", return_type=str, when_used="json"),
 ]
+
+
+def jsonable(obj):
+    """تحويل آمن للاستجابات غير المُنمذجة: Decimal → نص (لا float أبدًا)."""
+    import uuid as _uuid
+    from datetime import date as _date
+    if isinstance(obj, Decimal):
+        return f"{obj:.3f}" if obj.as_tuple().exponent <= -3 or obj == obj.to_integral_value() else str(obj)
+    if isinstance(obj, dict):
+        return {k: jsonable(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [jsonable(v) for v in obj]
+    if isinstance(obj, (_uuid.UUID, _date)):
+        return str(obj) if isinstance(obj, _uuid.UUID) else obj.isoformat()
+    return obj

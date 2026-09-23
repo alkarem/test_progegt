@@ -7,15 +7,18 @@ from app.core.config import get_settings
 from app.core.errors import install_error_handlers
 from app.modules import handlers  # noqa: F401  (تسجيل معالجات المستندات)
 from app.modules.adjustments.router import router as adjustments_router
+from app.modules.alerts.router import router as alerts_router
 from app.modules.attachments.router import router as attachments_router
 from app.modules.auth.router import router as auth_router
 from app.modules.authorizations.router import router as authorizations_router
 from app.modules.budget.router import router as budget_router
 from app.modules.catalog.router import router as catalog_router
 from app.modules.commitments.router import router as commitments_router
+from app.modules.dashboard.router import router as dashboard_router
 from app.modules.expenditures.router import router as expenditures_router
 from app.modules.fiscal.router import router as fiscal_router
 from app.modules.ledger.router import router as ledger_router
+from app.modules.search.router import router as search_router
 from app.modules.transfers.router import router as transfers_router
 from app.modules.users.router import router as users_router
 from app.modules.workflow.router import router as workflow_router
@@ -49,7 +52,8 @@ def create_app() -> FastAPI:
     install_error_handlers(app)
     for r in (auth_router, users_router, catalog_router, fiscal_router, ledger_router, budget_router,
               workflow_router, authorizations_router, attachments_router,
-              transfers_router, commitments_router, expenditures_router, adjustments_router):
+              transfers_router, commitments_router, expenditures_router, adjustments_router,
+              alerts_router, dashboard_router, search_router):
         app.include_router(r, prefix=API_PREFIX)
 
     @app.get(f"{API_PREFIX}/health", tags=["النظام"])

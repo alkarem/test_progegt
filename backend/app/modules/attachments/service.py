@@ -118,6 +118,8 @@ def link(session: Session, att: Attachment, source_type: str, source_id: uuid.UU
     session.add(AttachmentLink(attachment_id=att.id, source_type=source_type, source_id=source_id,
                                linked_by=user_id))
     session.flush()
+    from app.modules.alerts.service import resolve_for_source
+    resolve_for_source(session, "MISSING_ATTACHMENT", source_id)
 
 
 def unlink(session: Session, att: Attachment, source_type: str, source_id: uuid.UUID) -> None:
