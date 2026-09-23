@@ -45,18 +45,25 @@ def outstanding(session: Session, c: Commitment) -> Decimal:
     return Decimal(v)
 
 
+def _net_by_type(session: Session, c: Commitment, txn_types: tuple[str, ...]) -> Decimal:
+    """صافي قيود نوع معين على الارتباط، مع احتساب قيودها العكسية (عكس الصرف يعيد القائم)."""
+    from sqlalchemy.orm import aliased
+    orig = aliased(LedgerEntry)
+    comp = component_of(c)
+    direct = select(func.coalesce(func.sum(LedgerEntry.direction * LedgerEntry.amount), 0)).where(
+        LedgerEntry.commitment_id == c.id, LedgerEntry.component == comp, LedgerEntry.txn_type.in_(txn_types))
+    reversed_ = select(func.coalesce(func.sum(LedgerEntry.direction * LedgerEntry.amount), 0)).join(
+        orig, orig.id == LedgerEntry.reversal_of_id).where(
+        LedgerEntry.commitment_id == c.id, LedgerEntry.component == comp, orig.txn_type.in_(txn_types))
+    return -(Decimal(session.scalar(direct)) + Decimal(session.scalar(reversed_)))
+
+
 def paid(session: Session, c: Commitment) -> Decimal:
-    v = session.scalar(select(func.coalesce(func.sum(LedgerEntry.direction * LedgerEntry.amount), 0)).where(
-        LedgerEntry.commitment_id == c.id, LedgerEntry.txn_type.in_(("COMMITMENT_LIQUIDATION",)),
-        LedgerEntry.component == "COMMITMENT"))
-    return -Decimal(v)
+    return _net_by_type(session, c, ("COMMITMENT_LIQUIDATION",))
 
 
 def cancelled(session: Session, c: Commitment) -> Decimal:
-    v = session.scalar(select(func.coalesce(func.sum(LedgerEntry.direction * LedgerEntry.amount), 0)).where(
-        LedgerEntry.commitment_id == c.id, LedgerEntry.txn_type.in_(("CANCELLATION", "CLOSING")),
-        LedgerEntry.component == component_of(c)))
-    return -Decimal(v)
+    return _net_by_type(session, c, ("CANCELLATION", "CLOSING"))
 
 
 def refresh_status(session: Session, c: Commitment) -> None:

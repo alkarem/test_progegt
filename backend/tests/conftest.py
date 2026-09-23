@@ -156,3 +156,24 @@ def settings_tmp_storage(tmp_path, monkeypatch):
     from app.core.config import get_settings
     monkeypatch.setattr(get_settings(), "storage_dir", str(tmp_path))
     return tmp_path
+
+
+STEP_ROLE = {"FINANCIAL_REVIEW": "FINANCIAL_REVIEWER", "BUDGET_CONTROL": "BUDGET_CONTROLLER",
+             "SUPERVISOR_APPROVAL": "SUPERVISOR", "FINAL_APPROVAL": "APPROVER"}
+
+
+def drive(client, team: dict, source_type: str, doc_id: str, **approve_body):
+    """يقدّم المستند ويمرره على كل مراحل مساره بالدور المناسب لكل مرحلة. يعيد آخر استجابة."""
+    r = client.post(f"/api/v1/documents/{source_type}/{doc_id}/submit", headers=team["DATA_ENTRY"], json={})
+    assert r.status_code == 200, r.text
+    while r.status_code == 200 and r.json()["current_step"]:
+        role = STEP_ROLE[r.json()["current_step"]]
+        r = client.post(f"/api/v1/documents/{source_type}/{doc_id}/approve", headers=team[role],
+                        json=approve_body if role == "APPROVER" else {})
+    return r
+
+
+@pytest.fixture()
+def team(user_factory):
+    return {r: user_factory(r.lower(), r) for r in
+            ("DATA_ENTRY", "FINANCIAL_REVIEWER", "BUDGET_CONTROLLER", "SUPERVISOR", "APPROVER")}
