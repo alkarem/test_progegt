@@ -68,3 +68,64 @@ def sys_ctx():
 def begin_write(session, user_id=SYSTEM_USER_ID, reason="test"):
     """يبدأ معاملة كتابة بسياق تدقيق."""
     set_audit_context(session, AuditContext(user_id=user_id, reason=reason))
+
+
+# ---------------------------------------------------------------------------
+# API
+# ---------------------------------------------------------------------------
+PASSWORD = "Str0ng-Passw0rd-2026"
+
+
+@pytest.fixture()
+def app(database):
+    from app.core.ratelimit import login_limiter
+    from app.main import create_app
+    login_limiter.reset()
+    with new_session() as s:
+        from app.modules.users.service import sync_permissions_and_roles
+        set_audit_context(s, AuditContext(user_id=SYSTEM_USER_ID, reason="test setup"))
+        sync_permissions_and_roles(s)
+        s.commit()
+    return create_app()
+
+
+@pytest.fixture()
+def client(app):
+    from fastapi.testclient import TestClient
+    with TestClient(app) as c:
+        yield c
+
+
+def create_user(username: str, roles: list[str], password: str = PASSWORD, must_change: bool = False,
+                scopes: dict | None = None):
+    from app.core.security import hash_password
+    from app.modules.users.models import User
+    from app.modules.users.service import set_roles, set_scopes
+    with new_session() as s:
+        set_audit_context(s, AuditContext(user_id=SYSTEM_USER_ID, reason="test user"))
+        u = User(username=username, full_name=f"مستخدم {username}", password_hash=hash_password(password),
+                 must_change_password=must_change)
+        s.add(u)
+        s.flush()
+        set_roles(s, u, roles)
+        if scopes:
+            set_scopes(s, u, scopes)
+        s.commit()
+        return u.id
+
+
+def login(client, username: str, password: str = PASSWORD) -> dict:
+    r = client.post("/api/v1/auth/login", json={"username": username, "password": password})
+    assert r.status_code == 200, r.text
+    return {"Authorization": f"Bearer {r.json()['access_token']}"}
+
+
+@pytest.fixture()
+def user_factory(app):
+    """ينشئ مستخدمًا بدور ويعيد ترويسة الدخول."""
+    def make(username: str, *roles: str, **kw) -> dict:
+        from fastapi.testclient import TestClient
+        create_user(username, list(roles), **kw)
+        with TestClient(app) as c:
+            return login(c, username)
+    return make
