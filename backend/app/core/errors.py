@@ -60,6 +60,23 @@ def install_error_handlers(app: FastAPI) -> None:
     async def _domain(_: Request, exc: DomainError):
         return _problem(exc.status_code, exc.code, exc.message, exc.details)
 
+    from sqlalchemy.exc import DBAPIError, IntegrityError
+
+    @app.exception_handler(IntegrityError)
+    async def _integrity(_: Request, exc: IntegrityError):
+        # شبكة أمان: قيود قاعدة البيانات هي خط الدفاع الأخير (التكرار، والمفاتيح، والفحوص)
+        return _problem(409, "CONSTRAINT_VIOLATION", "العملية تخالف قيدًا في قاعدة البيانات.",
+                        {"constraint": getattr(getattr(exc.orig, "diag", None), "constraint_name", None)})
+
+    @app.exception_handler(DBAPIError)
+    async def _dbapi(_: Request, exc: DBAPIError):
+        # رسائل triggers الحماية (P0001/42501) عربية وموجهة للمستخدم
+        code = getattr(exc.orig, "sqlstate", None)
+        if code in ("P0001", "42501"):
+            msg = str(getattr(getattr(exc.orig, "diag", None), "message_primary", "") or "العملية مرفوضة.")
+            return _problem(409, "RULE_VIOLATION", msg)
+        raise exc
+
     @app.exception_handler(RequestValidationError)
     async def _validation(_: Request, exc: RequestValidationError):
         errors = [{"loc": list(e.get("loc", [])), "msg": e.get("msg"), "type": e.get("type")}

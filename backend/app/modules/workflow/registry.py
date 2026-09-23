@@ -24,6 +24,7 @@ class DocHandler:
     definition_code: Callable[[Any], str]
     doc_no: Callable[[Any], str]
     on_cancel: Callable[[Session, Any], None] | None = None
+    on_status: Callable[[Session, Any], None] | None = None   # بعد كل تغيير حالة في الدورة
 
 
 _HANDLERS: dict[str, DocHandler] = {}

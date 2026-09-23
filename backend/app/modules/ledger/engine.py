@@ -208,6 +208,7 @@ class EntrySpec:
     transfer_group_id: uuid.UUID | None = None
     reversal_of_id: uuid.UUID | None = None
     description: str | None = None
+    commitment_id: uuid.UUID | None = None
 
 
 @dataclass
@@ -375,7 +376,7 @@ def post(session: Session, req: PostingRequest) -> PostingResult:
             transfer_group_id=e.transfer_group_id, reversal_of_id=e.reversal_of_id,
             override_grant_id=grant.id if (grant is not None and ev.override_needed > 0) else None,
             is_historical_exception=req.historical_exception, description=e.description,
-            posted_by=req.posted_by, approved_by=req.approved_by)
+            commitment_id=e.commitment_id, posted_by=req.posted_by, approved_by=req.approved_by)
         session.add(row)
         created.append(row)
     session.flush()
@@ -407,7 +408,8 @@ def reversal_specs(session: Session, source_type: str, source_id: uuid.UUID, rea
             g = groups.setdefault(o.transfer_group_id, uuid.uuid4())
         specs.append(EntrySpec(budget_line_id=o.budget_line_id, txn_type="REVERSAL", component=o.component,
                                direction=-o.direction, amount=o.amount, source_line_id=o.source_line_id,
-                               transfer_group_id=g, reversal_of_id=o.id, description=f"عكس: {reason}"))
+                               transfer_group_id=g, reversal_of_id=o.id, description=f"عكس: {reason}",
+                               commitment_id=o.commitment_id))
     return specs
 
 

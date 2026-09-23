@@ -156,6 +156,8 @@ def submit(session: Session, principal: Principal, handler: DocHandler, doc, ip:
     doc.status = "SUBMITTED"
     doc.submitted_at = _now()
     doc.row_version += 1
+    if handler.on_status:
+        handler.on_status(session, doc)
     session.flush()
     return inst
 
@@ -207,6 +209,8 @@ def approve(session: Session, principal: Principal, handler: DocHandler, doc, *,
     inst.step_entered_at = _now()
     doc.status = "IN_REVIEW"
     doc.row_version += 1
+    if handler.on_status:
+        handler.on_status(session, doc)
     session.flush()
     return inst
 
@@ -243,6 +247,8 @@ def return_to_creator(session: Session, principal: Principal, handler: DocHandle
     inst.state, inst.current_step_id = "RETURNED", None
     doc.status = "RETURNED"
     doc.row_version += 1
+    if handler.on_status:
+        handler.on_status(session, doc)
     session.flush()
     return inst
 

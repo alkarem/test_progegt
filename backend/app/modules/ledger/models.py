@@ -69,6 +69,7 @@ class LedgerEntry(Base):
     reversal_of_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("ledger_entries.id"))
     override_grant_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("override_grants.id"))
     is_historical_exception: Mapped[bool] = mapped_column(Boolean, default=False)
+    commitment_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     description: Mapped[str | None] = mapped_column(Text)
     posted_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
     approved_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
