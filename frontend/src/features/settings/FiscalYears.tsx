@@ -9,7 +9,7 @@ import { fmtDate, fmtDateTime } from "@/lib/labels";
 import { useItems } from "@/lib/hooks";
 
 const BASIS: Record<string, string> = { APPROPRIATION: "على الاعتماد", AUTHORIZATION: "على التفويض", TWO_LEVEL: "مستويان (اعتماد ثم تفويض)" };
-const FY_STATUS: Record<string, { l: string; t: string }> = { DRAFT: { l: "مسودة", t: "mute" }, OPEN: { l: "مفتوحة", t: "ok" }, CLOSING: { l: "قيد الإقفال", t: "warn" }, CLOSED: { l: "مقفلة", t: "bad" } };
+const FY_STATUS: Record<string, { l: string; t: string }> = { PLANNING: { l: "قيد التخطيط", t: "mute" }, OPEN: { l: "مفتوحة", t: "ok" }, CLOSING: { l: "قيد الإقفال", t: "warn" }, CLOSED: { l: "مقفلة", t: "bad" } };
 
 function YearForm({ fy, onClose }: { fy: FiscalYear | null; onClose: () => void }) {
   const qc = useQueryClient();
@@ -122,7 +122,7 @@ export function FiscalYears() {
               <div className="ms-auto flex gap-2">
                 <button className="btn-ghost" onClick={() => setOpen(open === fy.id ? null : fy.id)}>الفترات</button>
                 {can("fiscal.manage") && fy.status !== "CLOSED" && <button className="btn-outline" onClick={() => setForm(fy)}>الإعدادات</button>}
-                {can("fiscal.manage") && fy.status === "DRAFT" && <button className="btn-ok" onClick={() => openYear(fy)}>فتح السنة</button>}
+                {can("fiscal.manage") && fy.status === "PLANNING" && <button className="btn-ok" onClick={() => openYear(fy)}>فتح السنة</button>}
                 {can("fiscal.close_year") && ["OPEN", "CLOSING"].includes(fy.status) && <button className="btn-danger" onClick={() => setClosing(fy)}>الإقفال السنوي</button>}
                 {can("imports.prepare") && fy.status === "OPEN" && <Link className="btn-ghost" to="/settings/imports">استيراد Excel</Link>}
               </div>

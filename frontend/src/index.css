@@ -31,3 +31,7 @@
   aside, header, .noprint { display: none !important; }
   main { padding: 0 !important; }
 }
+
+/* SVG يرث اتجاه RTL فتنقلب محاذاة text-anchor في Recharts؛ المحاور معكوسة يدويًا في كل رسم. */
+.recharts-wrapper, .recharts-wrapper svg { direction: ltr; }
+.recharts-legend-wrapper { direction: rtl; }

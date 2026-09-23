@@ -51,7 +51,7 @@ export function Dashboard() {
               <BarChart data={bva.data.map((r: any) => ({ ...r, b: n(r.budget), a: n(r.actual), c: n(r.commitment) }))} layout="vertical" margin={{ left: 10, right: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                 <XAxis type="number" tickFormatter={(v) => (v / 1000).toLocaleString("en") + "k"} reversed />
-                <YAxis type="category" dataKey="item_code" width={50} orientation="right" />
+                <YAxis type="category" dataKey="item_code" width={50} orientation="right" interval={0} />
                 <Tooltip formatter={tip} labelFormatter={(l, p) => `${l} ${p?.[0]?.payload?.item_name ?? ""}`} />
                 <Legend />
                 <Bar dataKey="b" name="الاعتماد" fill={C.budget} barSize={8} onClick={(d: any) => d?.item_code && nav(`/budget?item=${d.item_code}`)} />
@@ -66,7 +66,11 @@ export function Dashboard() {
           {!monthly.data ? <Spinner /> : (
             <>
               <ResponsiveContainer width="100%" height={240}>
-                <ComposedChart data={monthly.data.months.map((m: any) => ({ m: MONTHS[m.month - 1], a: n(m.actual), c: n(m.cumulative) }))}>
+                <ComposedChart data={monthly.data.months.map((m: any, _i: number, all: any[]) => {
+                  // لا يُمد الخط التراكمي إلى أشهر لم تقع فيها حركة بعد
+                  const last = Math.max(0, ...all.filter((x) => n(x.actual) !== 0).map((x) => x.month));
+                  return { m: MONTHS[m.month - 1], a: n(m.actual), c: m.month <= last ? n(m.cumulative) : null };
+                })}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="m" reversed /><YAxis orientation="right" tickFormatter={(v) => (v / 1000).toLocaleString("en") + "k"} />
                   <Tooltip formatter={tip} /><Legend />

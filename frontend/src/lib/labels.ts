@@ -51,5 +51,10 @@ export const fmtDate = (s?: string | null) => {
   const d = s.slice(0, 10).split("-");
   return d.length === 3 ? `${d[2]}/${d[1]}/${d[0]}` : s;
 };
-export const fmtDateTime = (s?: string | null) =>
-  s ? new Date(s).toLocaleString("ar-LY-u-nu-latn", { dateStyle: "short", timeStyle: "short" }) : "—";
+export const fmtDateTime = (s?: string | null) => {
+  if (!s) return "—";
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return s;
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+};
