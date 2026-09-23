@@ -36,18 +36,39 @@ backend/    الخادم: app/modules/<الوحدة>/{models,service,router}.py�
 frontend/   الواجهة: src/features/<الشاشة>، src/components/ui.tsx، src/lib (المبالغ والتسميات)
 docs/       المخطط المهني (00–16)
 deploy/     قالب الإعدادات وشهادات TLS
+windows/    تثبيت وتشغيل بنقرتين على Windows
 docker-compose.yml · Makefile · .github/workflows/ci.yml
 ```
 
 ---
 
-## التشغيل في بيئة الإنتاج (خادم الشبكة المحلية)
+## التشغيل على Windows
+
+1. ثبّت **Docker Desktop** من https://www.docker.com/products/docker-desktop/ ، وأعد تشغيل الجهاز إن طُلب منك ذلك، ثم افتحه وانتظر حتى يعمل.
+2. حمّل المشروع: من صفحة المستودع على GitHub اختر الفرع `claude/brave-noether-pd8rpv` ثم **Code ← Download ZIP**، وفك الضغط في مجلد مثل `C:\GBCFMS`. أو استخدم `git clone` إن كان Git مثبتًا.
+3. افتح مجلد `windows` وانقر نقرتين على **`install.cmd`**. السكربت يُنشئ الإعدادات بأسرار عشوائية، ويبني النظام ويشغّله، ثم يطلب كلمة مرور المسؤول `admin` ويفتح المتصفح على `https://localhost`.
+
+عند فتح الموقع سيحذّر المتصفح من الشهادة لأنها موقعة ذاتيًا. اختر «متقدم» ثم «المتابعة».
+
+| الملف (في مجلد `windows`) | الغرض |
+|---|---|
+| `start.cmd` / `stop.cmd` | تشغيل النظام وإيقافه. البيانات تبقى محفوظة |
+| `backup.cmd` | نسخة احتياطية فورية في مجلد `backups`. النسخ اليومي يعمل تلقائيًا ما دام النظام يعمل |
+| `update.cmd` | نسخة احتياطية ثم تحديث (يتطلب Git) |
+| `logs.cmd` | عرض السجلات عند حدوث مشكلة |
+
+**ملاحظات:**
+- احفظ نسخة من ملف `.env` (في مجلد المشروع) خارج الجهاز، فمفتاح `GBCFMS_BACKUP_KEY` الذي فيه لازم لاستعادة النسخ الاحتياطية.
+- إن كان المنفذ 443 أو 80 مستخدمًا من برنامج آخر، غيّر `HTTPS_PORT` و`HTTP_PORT` في `.env` (مثلًا 8443 و8080) ثم شغّل `start.cmd`.
+- للوصول من أجهزة أخرى في الشبكة استخدم `https://<اسم الجهاز أو عنوان IP>`، واسمح بالمنفذ في جدار حماية Windows.
+
+## التشغيل في بيئة الإنتاج (خادم Linux)
 
 المتطلبات: Linux مع Docker وDocker Compose v2.
 
 ```bash
 make init        # ينشئ .env بأسرار عشوائية ومجلد backups/. احفظ GBCFMS_BACKUP_KEY خارج الخادم
-make certs       # شهادة موقعة ذاتيًا للتجربة؛ في الإنتاج ضع server.crt وserver.key من CA الجهة في deploy/certs
+# الشهادة: ضع server.crt وserver.key من CA الجهة في deploy/certs، وإلا تُولَّد شهادة موقعة ذاتيًا تلقائيًا
 make build
 make up          # يرحّل المخطط تلقائيًا ثم يشغّل nginx وapi وscheduler وpostgres
 make bootstrap   # ينشئ المسؤول الأول (يطلب كلمة المرور) ويحمّل الباب الثاني وبنوده 2/1–2/29

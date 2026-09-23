@@ -70,8 +70,11 @@ services:
     ports:
       - "${HTTPS_PORT:-443}:443"
       - "${HTTP_PORT:-80}:80"
+    environment:
+      GBCFMS_HOST: ${GBCFMS_HOST:-localhost}
     volumes:
-      - ${CERTS_DIR:-./deploy/certs}:/etc/nginx/certs:ro
+      - ${CERTS_DIR:-./deploy/certs}:/etc/nginx/certs-host:ro
+      - certs:/etc/nginx/certs
     depends_on:
       api: { condition: service_healthy }
     networks: [internal]
@@ -82,3 +85,4 @@ networks:
 volumes:
   pgdata:
   storage:
+  certs:

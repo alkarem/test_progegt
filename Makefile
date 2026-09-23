@@ -13,7 +13,7 @@ init:  ## إنشاء .env بأسرار عشوائية ومجلد النسخ (م�
 	  echo "أُنشئ .env — احفظ نسخة من GBCFMS_BACKUP_KEY خارج الخادم."; }
 	@mkdir -p backups && (chown 10001 backups 2>/dev/null || echo "نفّذ: sudo chown 10001 backups")
 
-certs:  ## شهادة موقعة ذاتيًا للتجربة (استبدلها بشهادة CA الجهة في الإنتاج)
+certs:  ## شهادة موقعة ذاتيًا على المضيف (اختياري؛ الحاوية تولّد واحدة تلقائيًا إن لم توجد)
 	@mkdir -p deploy/certs
 	openssl req -x509 -newkey rsa:3072 -nodes -days 825 -keyout deploy/certs/server.key -out deploy/certs/server.crt \
 	  -subj "/CN=$${GBCFMS_HOST:-gbcfms.local}" -addext "subjectAltName=DNS:$${GBCFMS_HOST:-gbcfms.local},DNS:localhost"
