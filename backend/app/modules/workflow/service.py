@@ -178,6 +178,8 @@ def approve(session: Session, principal: Principal, handler: DocHandler, doc, *,
     if step.posts:
         # الفحص النهائي والترحيل داخل المعاملة نفسها، بقفل على الأرصدة (WF-06، WF-07)
         result = handler.post(session, doc, principal.user_id, override_grant_id)
+        from app.modules.attachments.service import lock_for_source
+        lock_for_source(session, handler.source_type, doc.id)
         _record(session, inst, "POST", principal.user_id, step_id=step.id, on_behalf_of=on_behalf_of,
                 comment=comment, ip=ip, budget_check={"checks": result.checks,
                                                       "override_used": result.override_used})

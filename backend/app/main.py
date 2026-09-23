@@ -6,7 +6,9 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from app.core.config import get_settings
 from app.core.errors import install_error_handlers
 from app.modules import handlers  # noqa: F401  (تسجيل معالجات المستندات)
+from app.modules.attachments.router import router as attachments_router
 from app.modules.auth.router import router as auth_router
+from app.modules.authorizations.router import router as authorizations_router
 from app.modules.budget.router import router as budget_router
 from app.modules.catalog.router import router as catalog_router
 from app.modules.fiscal.router import router as fiscal_router
@@ -42,7 +44,7 @@ def create_app() -> FastAPI:
     app.add_middleware(SecurityHeaders)
     install_error_handlers(app)
     for r in (auth_router, users_router, catalog_router, fiscal_router, ledger_router, budget_router,
-              workflow_router):
+              workflow_router, authorizations_router, attachments_router):
         app.include_router(r, prefix=API_PREFIX)
 
     @app.get(f"{API_PREFIX}/health", tags=["النظام"])

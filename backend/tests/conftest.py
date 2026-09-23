@@ -149,3 +149,10 @@ def seed_reference():
         set_audit_context(s, AuditContext(user_id=SYSTEM_USER_ID, reason="test seed"))
         seed_reference_data(s)
         s.commit()
+
+
+@pytest.fixture()
+def settings_tmp_storage(tmp_path, monkeypatch):
+    from app.core.config import get_settings
+    monkeypatch.setattr(get_settings(), "storage_dir", str(tmp_path))
+    return tmp_path

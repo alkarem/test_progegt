@@ -34,7 +34,7 @@ def fmt(value: Decimal) -> str:
 
 
 # نوع Pydantic: يقبل نصًا أو عددًا صحيحًا أو Decimal، ويُسلسل كنص "1234.500"
-Money = Annotated[Decimal, BeforeValidator(to_money), PlainSerializer(lambda v: f"{v:.3f}", return_type=str)]
+Money = Annotated[Decimal, BeforeValidator(to_money), PlainSerializer(lambda v: f"{v:.3f}", return_type=str, when_used="json")]
 
 
 def _positive(v: Decimal) -> Decimal:
@@ -45,5 +45,5 @@ def _positive(v: Decimal) -> Decimal:
 
 PositiveMoney = Annotated[
     Decimal, BeforeValidator(to_money), AfterValidator(_positive),
-    PlainSerializer(lambda v: f"{v:.3f}", return_type=str),
+    PlainSerializer(lambda v: f"{v:.3f}", return_type=str, when_used="json"),
 ]
