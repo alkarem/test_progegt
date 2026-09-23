@@ -12,7 +12,7 @@ from alembic import command
 from app.core.db import SYSTEM_USER_ID, AuditContext, configure_database, new_session, set_audit_context
 
 ADMIN_URL = os.environ.get("GBCFMS_TEST_ADMIN_URL", "postgresql+psycopg://gbcfms:gbcfms@localhost:5432/postgres")
-TEMPLATE_DB = "gbcfms_test_template"
+TEMPLATE_DB = f"gbcfms_test_template_{os.environ.get('PYTEST_XDIST_WORKER', 'main')}"
 
 
 def _admin_engine():
