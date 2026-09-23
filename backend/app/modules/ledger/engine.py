@@ -266,11 +266,23 @@ def _load_override(session: Session, req: PostingRequest) -> OverrideGrant | Non
     return g
 
 
-def post(session: Session, req: PostingRequest) -> PostingResult:
-    """ترحيل ذري: قفل الأسطر ← فحص ← إدراج القيود (والـ trigger يحدّث الأرصدة).
+@dataclass
+class Evaluation:
+    fy: FiscalYear
+    period_id: uuid.UUID
+    before: dict[uuid.UUID, Position]
+    after: dict[uuid.UUID, Position]
+    checks: list[dict]
+    shortfalls: list[dict]
+    override_needed: Decimal
+    grant: OverrideGrant | None
 
-    يجب أن يكون المستدعي قد ضبط سياق التدقيق للمعاملة. لا يُنفذ COMMIT هنا.
-    """
+
+def _fmt_check(d: dict) -> dict:
+    return {k: (fmt(v) if isinstance(v, Decimal) else v) for k, v in d.items() if k != "message"}
+
+
+def _evaluate(session: Session, req: PostingRequest, *, lock: bool) -> Evaluation:
     _validate_specs(req)
     fy = session.get(FiscalYear, req.fiscal_year_id)
     if fy is None:
@@ -285,10 +297,10 @@ def post(session: Session, req: PostingRequest) -> PostingResult:
         raise Conflict(f"الفترة المالية {period.period_no} مقفلة.", code="PERIOD_CLOSED")
 
     line_ids = sorted({e.budget_line_id for e in req.entries})
-    # قفل بترتيب ثابت لتجنب الجمود
-    balances = {b.budget_line_id: b for b in session.scalars(
-        select(BudgetBalance).where(BudgetBalance.budget_line_id.in_(line_ids))
-        .order_by(BudgetBalance.budget_line_id).with_for_update())}
+    stmt = select(BudgetBalance).where(BudgetBalance.budget_line_id.in_(line_ids)).order_by(BudgetBalance.budget_line_id)
+    if lock:
+        stmt = stmt.with_for_update()  # قفل بترتيب ثابت لتجنب الجمود
+    balances = {b.budget_line_id: b for b in session.scalars(stmt)}
     lines = {ln.id: ln for ln in session.scalars(select(BudgetLine).where(BudgetLine.id.in_(line_ids)))}
     for lid in line_ids:
         line = lines.get(lid)
@@ -303,8 +315,7 @@ def post(session: Session, req: PostingRequest) -> PostingResult:
     deltas = _deltas(req.entries)
     before = {lid: position_from_balance(fy, balances.get(lid)) for lid in line_ids}
     after = {lid: before[lid].with_deltas(deltas[lid]) for lid in line_ids}
-
-    grant = _load_override(session, req)
+    grant = _load_override(session, req) if lock else None
     shortfalls, checks = [], []
     override_needed = ZERO
     for lid in line_ids:
@@ -312,12 +323,13 @@ def post(session: Session, req: PostingRequest) -> PostingResult:
         consumed = b.available - a.available
         if consumed > 0:
             chk = check_amount(b, consumed)
-            checks.append({**line_label(session, lines[lid]), **chk.as_dict()})
+            row = {**line_label(session, lines[lid]), **chk.as_dict()}
+            checks.append(row)
             if not chk.ok:
                 if grant is not None and grant.budget_line_id in (None, lid):
                     override_needed += chk.shortfall
                 elif not req.historical_exception:
-                    shortfalls.append({**line_label(session, lines[lid]), **chk.as_dict()})
+                    shortfalls.append(row)
         if b.unallocated is not None and a.unallocated is not None and a.unallocated < 0 \
                 and a.unallocated < b.unallocated and not req.historical_exception:
             raise Conflict("مجموع التفويضات على البند يتجاوز اعتماده السنوي.", code="EXCEEDS_APPROPRIATION",
@@ -325,36 +337,53 @@ def post(session: Session, req: PostingRequest) -> PostingResult:
                                     "allocation_after": fmt(a.allocation)})
         if a.reservation < 0 or a.commitment < 0:
             raise Conflict("لا يمكن أن يصبح الحجز أو الارتباط القائم سالبًا.", code="NEGATIVE_OUTSTANDING")
-    if shortfalls:
-        first = shortfalls[0]
+    return Evaluation(fy, period.id, before, after, checks, shortfalls, override_needed, grant)
+
+
+def simulate(session: Session, req: PostingRequest) -> dict:
+    """فحص بدون كتابة ولا أقفال (مرحلة التقديم ومرحلة الرقابة، 05-workflow WF-06)."""
+    ev = _evaluate(session, req, lock=False)
+    return {"ok": not ev.shortfalls, "message": INSUFFICIENT_MESSAGE if ev.shortfalls else None,
+            "lines": [_fmt_check(c) | {"ok": c["ok"]} for c in ev.checks]}
+
+
+def post(session: Session, req: PostingRequest) -> PostingResult:
+    """ترحيل ذري: قفل الأسطر ← فحص نهائي ← إدراج القيود (والـ trigger يحدّث الأرصدة).
+
+    يجب أن يكون المستدعي قد ضبط سياق التدقيق للمعاملة. لا يُنفذ COMMIT هنا.
+    """
+    ev = _evaluate(session, req, lock=True)
+    if ev.shortfalls:
+        first = ev.shortfalls[0]
         raise InsufficientBudget(INSUFFICIENT_MESSAGE, details={
-            **{k: (fmt(v) if isinstance(v, Decimal) else v) for k, v in first.items() if k != "message"},
-            "lines": [{k: (fmt(v) if isinstance(v, Decimal) else v) for k, v in s.items() if k != "message"}
-                      for s in shortfalls],
-            "override_possible": False})
-    if override_needed > 0:
-        if grant.max_amount - grant.used_amount < override_needed:
+            **_fmt_check(first), "lines": [_fmt_check(x) for x in ev.shortfalls], "override_possible": False})
+    grant = ev.grant
+    if ev.override_needed > 0:
+        if grant.max_amount - grant.used_amount < ev.override_needed:
             raise InsufficientBudget(INSUFFICIENT_MESSAGE, code="OVERRIDE_EXCEEDED", details={
-                "shortfall": fmt(override_needed), "override_remaining": fmt(grant.max_amount - grant.used_amount)})
-        grant.used_amount += override_needed
+                "shortfall": fmt(ev.override_needed),
+                "override_remaining": fmt(grant.max_amount - grant.used_amount)})
+        grant.used_amount += ev.override_needed
 
     created = []
     for e in req.entries:
         row = LedgerEntry(
-            id=uuid.uuid4(), fiscal_year_id=fy.id, period_id=period.id, budget_line_id=e.budget_line_id,
+            id=uuid.uuid4(), fiscal_year_id=ev.fy.id, period_id=ev.period_id, budget_line_id=e.budget_line_id,
             txn_type=e.txn_type, component=e.component, direction=e.direction, amount=e.amount,
             entry_date=req.entry_date, date_is_estimated=req.date_is_estimated, source_type=req.source_type,
             source_id=req.source_id, source_line_id=e.source_line_id, document_no=req.document_no,
             transfer_group_id=e.transfer_group_id, reversal_of_id=e.reversal_of_id,
-            override_grant_id=grant.id if (grant is not None and override_needed > 0) else None,
+            override_grant_id=grant.id if (grant is not None and ev.override_needed > 0) else None,
             is_historical_exception=req.historical_exception, description=e.description,
             posted_by=req.posted_by, approved_by=req.approved_by)
         session.add(row)
         created.append(row)
     session.flush()
-    for b in balances.values():
-        session.refresh(b)
-    return PostingResult(created, before, after, override_needed, checks)
+    for lid in ev.before:
+        b = session.get(BudgetBalance, lid)
+        if b is not None:
+            session.refresh(b)
+    return PostingResult(created, ev.before, ev.after, ev.override_needed, ev.checks)
 
 
 # ---------------------------------------------------------------------------

@@ -95,6 +95,8 @@ def app(database):
         from app.modules.users.service import sync_permissions_and_roles
         set_audit_context(s, AuditContext(user_id=SYSTEM_USER_ID, reason="test setup"))
         sync_permissions_and_roles(s)
+        from app.modules.workflow.definitions import sync_workflow_definitions
+        sync_workflow_definitions(s)
         s.commit()
     return create_app()
 

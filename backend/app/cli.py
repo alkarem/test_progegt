@@ -19,6 +19,8 @@ def bootstrap(username: str, full_name: str, password: str | None) -> None:
     with new_session() as s:
         set_audit_context(s, AuditContext(user_id=SYSTEM_USER_ID, reason="bootstrap"))
         sync_permissions_and_roles(s)
+        from app.modules.workflow.definitions import sync_workflow_definitions
+        sync_workflow_definitions(s)
         if s.scalar(select(User).where(User.username == username)) is None:
             password = password or getpass.getpass("كلمة مرور المسؤول: ")
             validate_password_policy(password, username)
