@@ -54,6 +54,8 @@ erDiagram
 
 ## 2. الأنواع (Enums)
 
+> **قرار تنفيذي:** نُفذت هذه الأنواع كأعمدة `VARCHAR` مع قيود `CHECK` بدل `CREATE TYPE … AS ENUM`، لأن إضافة قيمة جديدة لنوع ENUM في PostgreSQL لا تتم داخل معاملة ترحيل ويصعب التراجع عنها. القيم المسموح بها هي نفسها.
+
 ```sql
 CREATE TYPE fiscal_year_status   AS ENUM ('PLANNING','OPEN','CLOSING','CLOSED');
 CREATE TYPE period_status        AS ENUM ('OPEN','CLOSED');

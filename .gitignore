@@ -6,3 +6,8 @@ instance/
 *.sqlite
 *.db
 .pytest_cache/
+.env
+backend/.venv/
+node_modules/
+dist/
+storage/
