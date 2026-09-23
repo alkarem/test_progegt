@@ -20,6 +20,7 @@ const MENU: { to: string; label: string; icon: string; perm?: string }[] = [
   { to: "/documents", label: "المستندات", icon: "▢", perm: "adjustments.view" },
   { to: "/alerts", label: "التنبيهات", icon: "⚠", perm: "alerts.view" },
   { to: "/audit", label: "التدقيق", icon: "⌕", perm: "audit.view" },
+  { to: "/assistant", label: "المساعد الذكي", icon: "✦", perm: "ai.use" },
   { to: "/settings", label: "الإعدادات", icon: "⚙" },
 ];
 

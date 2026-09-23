@@ -9,6 +9,7 @@ import { ChangePassword, Login } from "@/app/Login";
 import { Shell } from "@/app/Shell";
 import { YearProvider } from "@/app/year";
 import { Spinner, ToastProvider } from "@/components/ui";
+import { Assistant } from "@/features/ai/Assistant";
 import { Alerts, Notifications } from "@/features/alerts/Alerts";
 import { Inbox } from "@/features/approvals/Inbox";
 import { Audit } from "@/features/audit/Audit";
@@ -90,6 +91,7 @@ const ROUTES: [string, string | undefined, ReactNode][] = [
   ["/notifications", undefined, <Notifications />],
   ["/audit", "audit.view", <Audit />],
   ["/search", undefined, <Search />],
+  ["/assistant", "ai.use", <Assistant />],
   ["/account", undefined, <Account />],
   ["/settings", undefined, <SettingsHub />],
   ["/settings/users", "users.view", <Users />],

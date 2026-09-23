@@ -141,6 +141,7 @@ def after_posting(session: Session, source_type: str, doc, line_ids: list[uuid.U
         evaluate_line(session, lid)
     if source_type == "expenditure":
         evaluate_unusual(session, source_type, doc.id)
+        evaluate_patterns(session, doc)
         from app.modules.expenditures.service import similar
         dups = similar(session, doc)
         if dups:
@@ -148,6 +149,94 @@ def after_posting(session: Session, source_type: str, doc, line_ids: list[uuid.U
                         f"مصروف {doc.document_no} مشابه لمستندات سابقة: {', '.join(d.document_no for d in dups)}",
                         dedup=str(doc.id), fiscal_year_id=doc.fiscal_year_id, budget_line_id=doc.budget_line_id,
                         source_type=source_type, source_id=doc.id)
+
+
+# ---------------------------------------------------------------------------
+# أنماط غير معتادة إضافية (12-ai §3) — حتمية بالكامل
+# ---------------------------------------------------------------------------
+def _posted_expenditures(session: Session):
+    from app.modules.expenditures.models import Expenditure
+    return select(Expenditure).where(Expenditure.status == "POSTED")
+
+
+def evaluate_patterns(session: Session, e) -> None:
+    """تجزئة المشتريات، الأرقام المستديرة المتكررة، والصرف بلا ارتباط لبنود يُتوقع فيها ارتباط."""
+    from app.modules.expenditures.models import Expenditure
+    item = session.scalar(select(BudgetItem).join(BudgetLine, BudgetLine.item_id == BudgetItem.id)
+                          .where(BudgetLine.id == e.budget_line_id))
+
+    rule = _rule(session, "SPLIT_PURCHASE")
+    if rule and e.supplier_id:
+        limit = Decimal(str(rule.params.get("threshold", "5000")))
+        days = int(rule.params.get("days", 7))
+        group = list(session.scalars(_posted_expenditures(session).where(
+            Expenditure.supplier_id == e.supplier_id, Expenditure.budget_line_id == e.budget_line_id,
+            Expenditure.expenditure_date.between(e.expenditure_date - timedelta(days=days),
+                                                 e.expenditure_date + timedelta(days=days)),
+            Expenditure.amount < limit)))
+        total = sum((x.amount for x in group), Decimal("0"))
+        if len(group) >= 2 and total > limit and e.amount < limit:
+            raise_alert(session, "SPLIT_PURCHASE",
+                        f"تجزئة محتملة: {len(group)} مصروفات لنفس المستفيد على البند {item.code} خلال {days} أيام،"
+                        f" كل منها دون {fmt(limit)} ومجموعها {fmt(total)}",
+                        dedup=f"{e.supplier_id}:{e.budget_line_id}:{min(x.expenditure_date for x in group)}",
+                        fiscal_year_id=e.fiscal_year_id, budget_line_id=e.budget_line_id,
+                        source_type="expenditure", source_id=e.id,
+                        details={"documents": sorted(x.document_no for x in group), "total": str(total),
+                                 "threshold": str(limit)})
+
+    rule = _rule(session, "ROUND_AMOUNTS")
+    if rule and e.supplier_id:
+        unit = Decimal(str(rule.params.get("multiple", "1000")))
+        min_amount = Decimal(str(rule.params.get("min_amount", "5000")))
+        min_count = int(rule.params.get("min_count", 3))
+        rounds = [x for x in session.scalars(_posted_expenditures(session).where(
+            Expenditure.supplier_id == e.supplier_id, Expenditure.fiscal_year_id == e.fiscal_year_id,
+            Expenditure.amount >= min_amount)) if x.amount % unit == 0]
+        if len(rounds) >= min_count and e.amount % unit == 0 and e.amount >= min_amount:
+            raise_alert(session, "ROUND_AMOUNTS",
+                        f"{len(rounds)} مبالغ مستديرة (مضاعفات {fmt(unit)}) لنفس المستفيد في السنة",
+                        dedup=f"{e.supplier_id}:{e.fiscal_year_id}", fiscal_year_id=e.fiscal_year_id,
+                        source_type="expenditure", source_id=e.id,
+                        details={"documents": sorted(x.document_no for x in rounds)})
+
+    rule = _rule(session, "EXPENSE_WITHOUT_COMMITMENT")
+    if rule and e.commitment_id is None and item.code in rule.params.get("item_codes", []):
+        limit = Decimal(str(rule.params.get("threshold", "10000")))
+        if e.amount >= limit:
+            raise_alert(session, "EXPENSE_WITHOUT_COMMITMENT",
+                        f"مصروف {e.document_no} بمبلغ {fmt(e.amount)} على البند {item.code} دون ارتباط مسبق",
+                        dedup=str(e.id), fiscal_year_id=e.fiscal_year_id, budget_line_id=e.budget_line_id,
+                        source_type="expenditure", source_id=e.id)
+
+
+def evaluate_year_end(session: Session, fy: FiscalYear, today) -> bool:
+    """ارتفاع الصرف في آخر N يومًا عن متوسط السنة بأكثر من الضعف (يُقيَّم فقط بعد بدء تلك الفترة)."""
+    rule = _rule(session, "YEAR_END_SPIKE")
+    if rule is None:
+        return False
+    window = int(rule.params.get("days", 15))
+    factor = Decimal(str(rule.params.get("factor", "2")))
+    start_tail = fy.end_date - timedelta(days=window - 1)
+    if today < start_tail:
+        return False
+    rows = session.execute(select(LedgerEntry.entry_date, LedgerEntry.amount, LedgerEntry.direction).where(
+        LedgerEntry.fiscal_year_id == fy.id, LedgerEntry.component == "ACTUAL")).all()
+    tail = sum((a * d for dt, a, d in rows if dt >= start_tail), Decimal("0"))
+    body = sum((a * d for dt, a, d in rows if dt < start_tail), Decimal("0"))
+    body_days = max((start_tail - fy.start_date).days, 1)
+    tail_days = (min(today, fy.end_date) - start_tail).days + 1
+    if body <= 0 or tail <= 0:
+        return False
+    tail_avg, body_avg = tail / tail_days, body / body_days
+    if tail_avg > factor * body_avg:
+        raise_alert(session, "YEAR_END_SPIKE",
+                    f"متوسط الصرف اليومي في آخر {window} يومًا من {fy.year} ({fmt(tail_avg)}) يتجاوز"
+                    f" {factor} ضعف متوسط السنة ({fmt(body_avg)})",
+                    dedup=str(fy.id), fiscal_year_id=fy.id,
+                    details={"tail_total": str(tail), "body_total": str(body)})
+        return True
+    return False
 
 
 def after_submit(session: Session, source_type: str, doc, doc_no: str) -> None:
@@ -217,6 +306,10 @@ def run_periodic(session: Session) -> dict:
                             f"التفويض {a.auth_no} غير موزع بالكامل (غير الموزع {fmt(gap)})", dedup=str(a.id),
                             fiscal_year_id=a.fiscal_year_id, source_type="authorization", source_id=a.id)
                 bump("UNALLOCATED_AUTHORIZATION")
+
+    for fy in session.scalars(select(FiscalYear).where(FiscalYear.id.in_(open_years))):
+        if evaluate_year_end(session, fy, now.date()):
+            bump("YEAR_END_SPIKE")
 
     mismatched = engine.reconcile(session)
     if mismatched:

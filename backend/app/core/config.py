@@ -22,6 +22,15 @@ class Settings(BaseSettings):
     max_upload_mb: int = 20
     backup_key: str | None = None   # base64 لمفتاح AES-256 (32 بايت)؛ بدونه تُحفظ النسخ غير مشفرة مع تحذير
 
+    # المساعد الذكي (12-ai). معطل افتراضيًا؛ النظام المالي لا يعتمد عليه إطلاقًا.
+    ai_enabled: bool = False
+    ai_model: str = "claude-opus-5"
+    ai_effort: str = "medium"             # low | medium | high | xhigh | max
+    ai_api_key: str | None = None         # بدونه يُقرأ ANTHROPIC_API_KEY من البيئة
+    ai_questions_per_hour: int = 30
+    ai_max_tool_rounds: int = 6
+    ai_mask_personal: bool = True         # D-14: لا تُرسل أسماء أشخاص ولا نصوص حرة، أرقام مجمعة فقط
+
     @model_validator(mode="after")
     def _production_guard(self):
         if self.env == "prod" and (self.jwt_secret == DEV_JWT_SECRET or len(self.jwt_secret) < 32):
