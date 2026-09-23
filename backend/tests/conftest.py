@@ -129,3 +129,11 @@ def user_factory(app):
         with TestClient(app) as c:
             return login(c, username)
     return make
+
+
+def seed_reference():
+    from app.modules.catalog.seed import seed_reference_data
+    with new_session() as s:
+        set_audit_context(s, AuditContext(user_id=SYSTEM_USER_ID, reason="test seed"))
+        seed_reference_data(s)
+        s.commit()

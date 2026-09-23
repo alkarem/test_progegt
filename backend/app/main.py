@@ -6,6 +6,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from app.core.config import get_settings
 from app.core.errors import install_error_handlers
 from app.modules.auth.router import router as auth_router
+from app.modules.catalog.router import router as catalog_router
+from app.modules.fiscal.router import router as fiscal_router
 from app.modules.users.router import router as users_router
 
 API_PREFIX = "/api/v1"
@@ -35,7 +37,7 @@ def create_app() -> FastAPI:
     )
     app.add_middleware(SecurityHeaders)
     install_error_handlers(app)
-    for r in (auth_router, users_router):
+    for r in (auth_router, users_router, catalog_router, fiscal_router):
         app.include_router(r, prefix=API_PREFIX)
 
     @app.get(f"{API_PREFIX}/health", tags=["النظام"])
