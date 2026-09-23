@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     lockout_minutes: int = 15
     storage_dir: str = "storage"
     max_upload_mb: int = 20
+    backup_key: str | None = None   # base64 لمفتاح AES-256 (32 بايت)؛ بدونه تُحفظ النسخ غير مشفرة مع تحذير
 
     @model_validator(mode="after")
     def _production_guard(self):

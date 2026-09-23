@@ -9,8 +9,10 @@ from app.modules import handlers  # noqa: F401  (تسجيل معالجات ال�
 from app.modules.adjustments.router import router as adjustments_router
 from app.modules.alerts.router import router as alerts_router
 from app.modules.attachments.router import router as attachments_router
+from app.modules.audit.router import router as audit_router
 from app.modules.auth.router import router as auth_router
 from app.modules.authorizations.router import router as authorizations_router
+from app.modules.backup.router import router as backup_router
 from app.modules.budget.router import router as budget_router
 from app.modules.catalog.router import router as catalog_router
 from app.modules.commitments.router import router as commitments_router
@@ -56,7 +58,7 @@ def create_app() -> FastAPI:
               workflow_router, authorizations_router, attachments_router,
               transfers_router, commitments_router, expenditures_router, adjustments_router,
               alerts_router, dashboard_router, search_router, reports_router,
-              imports_router):
+              imports_router, audit_router, backup_router):
         app.include_router(r, prefix=API_PREFIX)
 
     @app.get(f"{API_PREFIX}/health", tags=["النظام"])

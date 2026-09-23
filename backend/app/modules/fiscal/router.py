@@ -98,6 +98,25 @@ def open_year(fy_id: uuid.UUID, p: Principal = Depends(require("fiscal.manage"))
     return _y(fy)
 
 
+@router.get("/fiscal-years/{fy_id}/closing-preview")
+def closing_preview(fy_id: uuid.UUID, p: Principal = Depends(require("fiscal.view")),
+                    session: Session = Depends(get_session)):
+    from app.modules.fiscal import closing
+    return closing.preview(session, service.get_year(session, fy_id))
+
+
+@router.post("/fiscal-years/{fy_id}/close")
+def close_year(fy_id: uuid.UUID, body: ReasonIn, p: Principal = Depends(require("fiscal.close_year")),
+               meta: RequestMeta = Depends(get_request_meta), session: Session = Depends(get_session)):
+    """الإقفال السنوي (FR-YE): معاملة واحدة، ولا يُتراجع عنه."""
+    from app.modules.fiscal import closing
+    begin_write(session, p.user_id, meta, reason=body.reason)
+    fy = session.get(FiscalYear, fy_id, with_for_update=True) or service.get_year(session, fy_id)
+    result = closing.close_year(session, fy, p.user_id)
+    session.commit()
+    return result
+
+
 @router.get("/fiscal-years/{fy_id}/periods", response_model=list[PeriodOut])
 def periods(fy_id: uuid.UUID, p: Principal = Depends(require("fiscal.view")), session: Session = Depends(get_session)):
     p.require_scope("FISCAL_YEAR", fy_id)
