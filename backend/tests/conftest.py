@@ -1,4 +1,5 @@
 """بنية الاختبار: PostgreSQL حقيقي. قاعدة قالب واحدة بعد الترحيلات، ونسخة جديدة منها لكل اختبار."""
+import contextlib
 import os
 import uuid
 
@@ -38,18 +39,27 @@ def template_database():
     eng.dispose()
 
 
-@pytest.fixture()
-def database(template_database):
+@contextlib.contextmanager
+def fresh_database():
+    """قاعدة جديدة من القالب (للاختبارات التي تحتاج أكثر من قاعدة، مثل اختبارات الخصائص)."""
     name = f"gbcfms_t_{uuid.uuid4().hex[:12]}"
     eng = _admin_engine()
     with eng.connect() as c:
         c.execute(text(f'CREATE DATABASE "{name}" TEMPLATE "{TEMPLATE_DB}"'))
     configure_database(_db_url(name))
-    yield _db_url(name)
-    configure_database(None)
-    with eng.connect() as c:
-        c.execute(text(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)'))
-    eng.dispose()
+    try:
+        yield _db_url(name)
+    finally:
+        configure_database(None)
+        with eng.connect() as c:
+            c.execute(text(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)'))
+        eng.dispose()
+
+
+@pytest.fixture()
+def database(template_database):
+    with fresh_database() as url:
+        yield url
 
 
 @pytest.fixture()
