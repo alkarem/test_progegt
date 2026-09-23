@@ -18,3 +18,5 @@ backend/tests/imports/fixtures/
 *.tsbuildinfo
 .hypothesis/
 .ruff_cache/
+deploy/certs/
+backups/

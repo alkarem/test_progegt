@@ -45,6 +45,7 @@ CREATE TRIGGER trg_ai_interactions_immutable BEFORE UPDATE OR DELETE ON ai_inter
 """
 
 DOWNGRADE = """
+SELECT set_config('gbcfms.user_id', '00000000-0000-0000-0000-000000000001', true);
 DROP TABLE IF EXISTS ai_interactions;
 DELETE FROM alert_rules WHERE code IN ('SPLIT_PURCHASE', 'ROUND_AMOUNTS', 'EXPENSE_WITHOUT_COMMITMENT', 'YEAR_END_SPIKE');
 """

@@ -1,0 +1,84 @@
+# نشر الشبكة المحلية (15-deployment §1): nginx وحده منشور، والباقي على شبكة داخلية.
+# الإعداد في ملف .env بجوار هذا الملف (انظر deploy/env.example).
+name: gbcfms
+
+x-backend-env: &backend-env
+  GBCFMS_ENV: prod
+  GBCFMS_DATABASE_URL: postgresql+psycopg://gbcfms:${POSTGRES_PASSWORD:?اضبط POSTGRES_PASSWORD في .env}@db:5432/gbcfms
+  GBCFMS_JWT_SECRET: ${GBCFMS_JWT_SECRET:?اضبط GBCFMS_JWT_SECRET في .env}
+  GBCFMS_BACKUP_KEY: ${GBCFMS_BACKUP_KEY:-}
+  GBCFMS_STORAGE_DIR: /app/storage
+  GBCFMS_MAX_UPLOAD_MB: ${GBCFMS_MAX_UPLOAD_MB:-20}
+  GBCFMS_AI_ENABLED: ${GBCFMS_AI_ENABLED:-false}
+  GBCFMS_AI_MODEL: ${GBCFMS_AI_MODEL:-claude-opus-5}
+  GBCFMS_AI_MASK_PERSONAL: ${GBCFMS_AI_MASK_PERSONAL:-true}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  HTTPS_PROXY: ${AI_HTTPS_PROXY:-}
+  TZ: ${TZ:-Africa/Tripoli}
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: gbcfms
+      POSTGRES_USER: gbcfms
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?اضبط POSTGRES_PASSWORD في .env}
+      TZ: ${TZ:-Africa/Tripoli}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gbcfms -d gbcfms"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./backend
+    image: gbcfms-api:${GBCFMS_VERSION:-latest}
+    command: ["api"]
+    restart: unless-stopped
+    environment:
+      <<: *backend-env
+      GBCFMS_WORKERS: ${GBCFMS_WORKERS:-4}
+    volumes:
+      - storage:/app/storage
+      - ${BACKUP_DIR:-./backups}:/app/storage/backups
+    depends_on:
+      db: { condition: service_healthy }
+    networks: [internal]
+
+  scheduler:
+    image: gbcfms-api:${GBCFMS_VERSION:-latest}
+    command: ["scheduler"]
+    restart: unless-stopped
+    environment: *backend-env
+    volumes:
+      - storage:/app/storage
+      - ${BACKUP_DIR:-./backups}:/app/storage/backups
+    depends_on:
+      api: { condition: service_healthy }
+    networks: [internal]
+    healthcheck:
+      disable: true
+
+  web:
+    build: ./frontend
+    image: gbcfms-web:${GBCFMS_VERSION:-latest}
+    restart: unless-stopped
+    ports:
+      - "${HTTPS_PORT:-443}:443"
+      - "${HTTP_PORT:-80}:80"
+    volumes:
+      - ${CERTS_DIR:-./deploy/certs}:/etc/nginx/certs:ro
+    depends_on:
+      api: { condition: service_healthy }
+    networks: [internal]
+
+networks:
+  internal:
+
+volumes:
+  pgdata:
+  storage:
