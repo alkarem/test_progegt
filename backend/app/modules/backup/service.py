@@ -234,7 +234,7 @@ def health(session: Session) -> dict:
     conns = session.scalar(text("SELECT count(*) FROM pg_stat_activity WHERE datname = current_database()"))
     last = session.scalar(select(Backup).where(Backup.status == "SUCCEEDED").order_by(Backup.finished_at.desc()).limit(1))
     mismatched = engine.reconcile(session)
-    return {"database_size": size, "connections": conns, "largest_tables": tables,
+    return {"database_name": session.scalar(text("SELECT current_database()")), "database_size": size, "connections": conns, "largest_tables": tables,
             "last_backup": {"at": last.finished_at, "file": last.file_name, "verified": (last.verification or {}).get("ok")}
             if last else None,
             "balances_reconciled": not mismatched, "encryption_configured": _key() is not None,

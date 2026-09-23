@@ -1,0 +1,33 @@
+@font-face { font-family: "Plex"; src: url("/fonts/IBMPlexSansArabic-Regular.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Plex"; src: url("/fonts/IBMPlexSansArabic-Bold.ttf") format("truetype"); font-weight: 700; font-display: swap; }
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { font-size: 14px; }
+  body { @apply antialiased; }
+  :focus-visible { @apply outline-none ring-2 ring-brand-600 ring-offset-1; }
+  .num { font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; }
+}
+
+@layer components {
+  .card { @apply bg-white rounded-lg shadow-card border border-line; }
+  .btn { @apply inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 font-bold text-sm transition disabled:opacity-50 disabled:cursor-not-allowed; }
+  .btn-primary { @apply btn bg-brand text-white hover:bg-brand-600; }
+  .btn-ghost { @apply btn text-brand hover:bg-brand-50; }
+  .btn-outline { @apply btn border border-line bg-white text-ink hover:bg-surface; }
+  .btn-danger { @apply btn bg-bad text-white hover:opacity-90; }
+  .btn-ok { @apply btn bg-ok text-white hover:opacity-90; }
+  .input { @apply w-full rounded-md border border-line bg-white px-2.5 py-1.5 text-sm focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600; }
+  .label { @apply block text-xs font-bold text-ink-soft mb-1; }
+  .th { @apply px-3 py-2 text-start text-xs font-bold text-ink-soft bg-surface border-b border-line whitespace-nowrap; }
+  .td { @apply px-3 py-2 border-b border-line text-sm; }
+  .badge { @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold whitespace-nowrap; }
+}
+
+@media print {
+  aside, header, .noprint { display: none !important; }
+  main { padding: 0 !important; }
+}

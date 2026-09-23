@@ -15,3 +15,6 @@ storage/
 # ملفات Excel حقيقية لا تُرفع للمستودع (بيانات أشخاص)
 *.real.xlsx
 backend/tests/imports/fixtures/
+*.tsbuildinfo
+.hypothesis/
+.ruff_cache/
