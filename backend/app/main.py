@@ -17,6 +17,7 @@ from app.modules.commitments.router import router as commitments_router
 from app.modules.dashboard.router import router as dashboard_router
 from app.modules.expenditures.router import router as expenditures_router
 from app.modules.fiscal.router import router as fiscal_router
+from app.modules.imports.router import router as imports_router
 from app.modules.ledger.router import router as ledger_router
 from app.modules.reports.router import router as reports_router
 from app.modules.search.router import router as search_router
@@ -54,7 +55,8 @@ def create_app() -> FastAPI:
     for r in (auth_router, users_router, catalog_router, fiscal_router, ledger_router, budget_router,
               workflow_router, authorizations_router, attachments_router,
               transfers_router, commitments_router, expenditures_router, adjustments_router,
-              alerts_router, dashboard_router, search_router, reports_router):
+              alerts_router, dashboard_router, search_router, reports_router,
+              imports_router):
         app.include_router(r, prefix=API_PREFIX)
 
     @app.get(f"{API_PREFIX}/health", tags=["النظام"])

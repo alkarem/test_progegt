@@ -11,3 +11,7 @@ backend/.venv/
 node_modules/
 dist/
 storage/
+
+# ملفات Excel حقيقية لا تُرفع للمستودع (بيانات أشخاص)
+*.real.xlsx
+backend/tests/imports/fixtures/
