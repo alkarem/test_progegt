@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8">
+<style>
+@font-face { font-family: Plex; src: url("../../backend/app/modules/reports/fonts/IBMPlexSansArabic-Regular.ttf"); font-weight: 400; }
+@font-face { font-family: Plex; src: url("../../backend/app/modules/reports/fonts/IBMPlexSansArabic-Bold.ttf"); font-weight: 700; }
+@page { size: A4; margin: 18mm 16mm 18mm 16mm;
+  @bottom-center { content: "صفحة " counter(page) " من " counter(pages); font-family: Plex; font-size: 8.5pt; color: #6b7785; }
+  @top-left { content: "GBCFMS"; font-family: Plex; font-size: 8pt; color: #9aa6b2; } }
+body { font-family: Plex; font-size: 10.5pt; line-height: 1.75; color: #1d2733; }
+.cover { border-bottom: 3px solid #0F3D5E; padding-bottom: 10px; margin-bottom: 14px; }
+.cover .org { color: #0F3D5E; font-weight: 700; font-size: 11pt; }
+h1 { font-size: 19pt; margin: 4px 0 2px; color: #0F3D5E; }
+.sub { color: #5b6877; font-size: 10pt; }
+h2 { font-size: 13pt; color: #0F3D5E; margin: 18px 0 6px; padding-bottom: 3px; border-bottom: 1px solid #d8dee5; page-break-after: avoid; }
+h3 { font-size: 11pt; margin: 10px 0 4px; page-break-after: avoid; }
+table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; page-break-inside: avoid; }
+th { background: #0F3D5E; color: #fff; font-weight: 700; text-align: right; padding: 5px 8px; font-size: 9.5pt; }
+td { border-bottom: 1px solid #e3e8ed; padding: 5px 8px; vertical-align: top; font-size: 9.5pt; }
+tr:nth-child(even) td { background: #f5f7f9; }
+ol, ul { margin: 4px 0 8px; padding-right: 20px; }
+li { margin: 2px 0; }
+.ltr { direction: ltr; unicode-bidi: embed; font-family: Plex; background: #eef2f6; padding: 0 4px; border-radius: 3px; font-size: 9.5pt; }
+.note { background: #fff7e6; border-right: 4px solid #c9861a; padding: 8px 12px; margin: 8px 0; page-break-inside: avoid; }
+.ok { background: #eaf6ee; border-right: 4px solid #1f8a4c; padding: 8px 12px; margin: 8px 0; page-break-inside: avoid; }
+b { font-weight: 700; }
+</style></head><body>
+
+<div class="cover">
+  <div class="org">نظام مراقبة الاعتمادات والمصروفات الحكومية — GBCFMS</div>
+  <h1>دليل التجربة على جهاز العمل ومتطلبات النظام</h1>
+  <div class="sub">التشغيل المباشر على Windows (بدون Docker) · للتجربة قبل اعتماد النسخة الرسمية</div>
+</div>
+
+<div class="ok">نعم، يمكن تجربة النظام على جهاز العمل قبل اعتماد النسخة الرسمية، بنفس خطوات التثبيت المباشر على Windows.</div>
+
+<h2>أولًا: متطلبات النظام</h2>
+<h3>الجهاز</h3>
+<table>
+  <tr><th>البند</th><th>الحد الأدنى</th><th>المقترح</th></tr>
+  <tr><td>نظام التشغيل</td><td>Windows 10 أو 11 (64-bit)</td><td>Windows 11</td></tr>
+  <tr><td>المعالج</td><td>نواتان</td><td>4 أنوية</td></tr>
+  <tr><td>الذاكرة</td><td>4 GB</td><td>8 GB</td></tr>
+  <tr><td>المساحة</td><td>2 GB للبرامج، ثم حسب البيانات والمرفقات</td><td>20 GB أو أكثر للنسخ الاحتياطية</td></tr>
+</table>
+
+<h3>البرامج</h3>
+<table>
+  <tr><th>البرنامج</th><th>الإصدار</th><th>ملاحظة</th></tr>
+  <tr><td>PostgreSQL</td><td>13 أو أحدث (المقترح 16)</td><td>احفظ كلمة مرور المستخدم <span class="ltr">postgres</span> التي تختارها عند تثبيته</td></tr>
+  <tr><td>Python</td><td>3.11 أو أحدث (المقترح 3.12)</td><td>فعّل خيار <span class="ltr">Add python.exe to PATH</span> عند التثبيت</td></tr>
+  <tr><td>المتصفح</td><td>Chrome أو Edge حديث</td><td>على الجهاز نفسه وعلى أجهزة المستخدمين</td></tr>
+</table>
+
+<h3>أثناء التثبيت فقط</h3>
+<ul>
+  <li><b>صلاحية مسؤول (Administrator)</b> لتثبيت PostgreSQL وPython. مثبّت النظام نفسه لا يحتاجها.</li>
+  <li><b>اتصال إنترنت</b> لتنزيل مكتبات Python من <span class="ltr">pypi.org</span> و<span class="ltr">files.pythonhosted.org</span>.</li>
+  <li>المنفذ <b>8080</b> غير مستخدم من برنامج آخر.</li>
+</ul>
+
+<h2>ثانيًا: تنبيهات خاصة بأجهزة العمل</h2>
+<table>
+  <tr><th>الحالة</th><th>ما العمل</th></tr>
+  <tr><td>الجهاز مقيد ولا يسمح بتثبيت البرامج</td><td>اطلب من قسم تقنية المعلومات تثبيت PostgreSQL وPython فقط، وبعدها تكمل أنت.</td></tr>
+  <tr><td>الشبكة تمر عبر وكيل (Proxy) أو تحجب المواقع</td><td>قد يفشل تنزيل المكتبات في الخطوة [2/6]. اطلب السماح بالموقعين المذكورين أعلاه.</td></tr>
+  <tr><td>برنامج الحماية يحجب ملفات المشروع</td><td>افتح «أمن Windows ← الحماية من الفيروسات والمخاطر ← سجل الحماية» وسجّل اسم التهديد واسم الملف لمراجعته.</td></tr>
+  <tr><td>الوصول من أجهزة الزملاء</td><td>اسمح بالمنفذ 8080 في جدار حماية Windows (قد يكون ذلك بيد قسم تقنية المعلومات).</td></tr>
+</table>
+
+<h2>ثالثًا: خطوات التثبيت والتشغيل</h2>
+<ol>
+  <li>حمّل المشروع من GitHub: الفرع <span class="ltr">claude/brave-noether-pd8rpv</span> ثم <b>Code ← Download ZIP</b>، وفك الضغط في مجلد مثل <span class="ltr">D:\GBCFMS</span>.</li>
+  <li>انقر نقرتين على <b><span class="ltr">INSTALL.cmd</span></b> في المجلد الرئيسي، وأجب عن الأسئلة:
+    <table>
+      <tr><th>السؤال</th><th>الإجابة</th></tr>
+      <tr><td>منفذ PostgreSQL (رقم)</td><td>اضغط <b>Enter</b> فقط (5432)</td></tr>
+      <tr><td>اسم مستخدم مسؤول PostgreSQL</td><td>اضغط <b>Enter</b> فقط (<span class="ltr">postgres</span>)</td></tr>
+      <tr><td>كلمة مرور هذا المستخدم</td><td>كلمة مرور <span class="ltr">postgres</span> التي اخترتها عند تثبيت PostgreSQL</td></tr>
+      <tr><td>كلمة مرور المسؤول admin (مرتين)</td><td>كلمة جديدة: 12 حرفًا على الأقل، حروف وأرقام، ولا تحتوي كلمة admin</td></tr>
+    </table>
+  </li>
+  <li>في نهاية التثبيت يظهر <b>مفتاح تشفير النسخ الاحتياطية</b>: انسخه واحفظه خارج الجهاز.</li>
+  <li>انقر نقرتين على <b><span class="ltr">START.cmd</span></b>، فيفتح المتصفح على <span class="ltr">http://localhost:8080</span>. <b>أبقِ النافذة السوداء مفتوحة</b> أثناء العمل؛ إغلاقها يوقف النظام.</li>
+  <li>ادخل باسم <span class="ltr">admin</span> وغيّر كلمة المرور عند الطلب.</li>
+</ol>
+
+<h2>رابعًا: أول الإعدادات بعد الدخول</h2>
+<ol>
+  <li><b>السنة المالية:</b> الإعدادات ← السنوات المالية ← «+ سنة مالية»، ثم اختر أساس الرقابة واضغط «فتح السنة».</li>
+  <li><b>المستخدمون:</b> الإعدادات ← المستخدمون. النظام يطبّق <b>فصل المهام</b>: من ينشئ المستند لا يعتمده.
+    <table>
+      <tr><th>الدور</th><th>عمله</th></tr>
+      <tr><td>مدخل بيانات</td><td>ينشئ المستندات: المصروفات والتفويضات وغيرها</td></tr>
+      <tr><td>مراجع مالي</td><td>المرحلة الأولى من الموافقة</td></tr>
+      <tr><td>مراقب ميزانية</td><td>يتحقق من الرصيد</td></tr>
+      <tr><td>مشرف</td><td>للمبالغ الكبيرة (5,000 فأكثر)</td></tr>
+      <tr><td>معتمد نهائي</td><td>الاعتماد والترحيل</td></tr>
+    </table>
+  </li>
+  <li><b>البيانات:</b> يدويًا من «المستندات» (الاعتماد الأصلي ثم التفويضات ثم المصروفات)، أو استيراد ملف Excel من «الإعدادات ← استيراد Excel». تنفيذ الاستيراد يقوم به مستخدم غير الذي رفع الملف.</li>
+</ol>
+
+<h2>خامسًا: من التجربة إلى النسخة الرسمية</h2>
+<p>جرّب بحرية: أنشئ سنة ومستخدمين ومستندات تجريبية، أو استورد ملف Excel. ثم لبدء نسخة رسمية نظيفة:</p>
+<ol>
+  <li>أوقف النظام بإغلاق نافذة <span class="ltr">START.cmd</span>.</li>
+  <li>احذف قاعدة البيانات <span class="ltr">gbcfms</span> من برنامج <b>pgAdmin</b> المرفق مع PostgreSQL (زر الفأرة الأيمن على القاعدة ثم Delete).</li>
+  <li>احذف الملف <span class="ltr">backend\.env</span> والمجلد <span class="ltr">data</span>.</li>
+  <li>شغّل <span class="ltr">INSTALL.cmd</span> من جديد: ستحصل على نظام فارغ بأسرار ومفاتيح جديدة.</li>
+</ol>
+<p>ويمكن بدلًا من ذلك <b>الاحتفاظ ببيانات التجربة</b> ونقلها إلى جهاز آخر عبر النسخة الاحتياطية ومفتاحها.</p>
+
+<h2>سادسًا: الحفظ والنسخ الاحتياطي</h2>
+<div class="note">
+  <b>احفظ خارج الجهاز:</b> مفتاح النسخ الاحتياطية (يُعرض بـ <span class="ltr">windows-local\backup-key.cmd</span>)، ونسخة من الملف <span class="ltr">backend\.env</span>.<br>
+  النسخ الاحتياطي يعمل يوميًا تلقائيًا ما دام النظام شغالًا، ويُحفظ في <span class="ltr">data\backups</span>؛ انسخ هذا المجلد دوريًا إلى وسيط خارجي.
+</div>
+<ul>
+  <li><b>تصدير PDF من التقارير</b> غير متاح في التشغيل المباشر على Windows. البديل: زر «طباعة» ثم «حفظ بصيغة PDF» من المتصفح، أو تصدير Excel.</li>
+  <li><b>الوصول من أجهزة المكتب:</b> <span class="ltr">http://اسم-الجهاز:8080</span> مع السماح بالمنفذ في جدار الحماية.</li>
+  <li>هذه المتطلبات تكفي لمكتب صغير. إن كان النظام سيخدم عددًا كبيرًا من المستخدمين معًا، فالأفضل تشغيله على خادم مخصص للشبكة.</li>
+</ul>
+</body></html>
