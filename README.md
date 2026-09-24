@@ -43,7 +43,12 @@ docker-compose.yml · Makefile · .github/workflows/ci.yml
 
 ---
 
-## التشغيل على Windows مباشرة (بدون Docker)
+## التشغيل على Windows
+
+**ابدأ من `INSTALL.cmd` في جذر المشروع** (نقرتان)، وبعد التثبيت شغّل النظام دائمًا من **`START.cmd`**.
+يختار الملفان الطريقة المناسبة تلقائيًا: Docker Desktop إن كان يعمل، وإلا التثبيت المباشر المشروح أدناه.
+
+### التشغيل المباشر (بدون Docker)
 
 مناسب للأجهزة التي لا تدعم المحاكاة الافتراضية، أو التي يتوفر فيها PostgreSQL وPython مسبقًا.
 
@@ -67,7 +72,7 @@ docker-compose.yml · Makefile · .github/workflows/ci.yml
 - للوصول من أجهزة أخرى في الشبكة: `http://<اسم الجهاز أو عنوان IP>:8080`، مع السماح بالمنفذ 8080 في جدار حماية Windows.
 - تصدير PDF يحتاج مكتبات GTK غير الموجودة في Windows افتراضيًا. البديل: زر «طباعة» ثم «حفظ بصيغة PDF» من المتصفح، أو تصدير Excel.
 
-## التشغيل على Windows باستخدام Docker Desktop
+### التشغيل باستخدام Docker Desktop
 
 1. ثبّت **Docker Desktop** من https://www.docker.com/products/docker-desktop/ ، وأعد تشغيل الجهاز إن طُلب منك ذلك، ثم افتحه وانتظر حتى يعمل.
 2. حمّل المشروع: من صفحة المستودع على GitHub اختر الفرع `claude/brave-noether-pd8rpv` ثم **Code ← Download ZIP**، وفك الضغط في مجلد مثل `C:\GBCFMS`. أو استخدم `git clone` إن كان Git مثبتًا.

@@ -8,10 +8,11 @@ echo.
 echo [1/4] التحقق من Docker Desktop...
 docker info >nul 2>&1
 if errorlevel 1 (
-  echo Docker Desktop غير مثبت أو لا يعمل. افتحه وانتظر حتى يعمل ثم أعد تشغيل هذا الملف.
-  echo التنزيل: https://www.docker.com/products/docker-desktop/
-  pause
-  exit /b 1
+  echo Docker Desktop غير مثبت أو لا يعمل على هذا الجهاز.
+  echo سيُستخدم التثبيت المباشر بدلا منه (يتطلب PostgreSQL وPython مثبتين^).
+  echo.
+  call "%~dp0..\windows-local\install.cmd"
+  exit /b
 )
 if not exist backups mkdir backups
 
