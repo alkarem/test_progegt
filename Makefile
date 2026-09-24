@@ -5,13 +5,12 @@ COMPOSE ?= docker compose
 help:  ## عرض الأوامر
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-10s %s\n", $$1, $$2}'
 
-init:  ## إنشاء .env بأسرار عشوائية ومجلد النسخ (مرة واحدة)
-	@test -f .env || { cp deploy/env.example .env; \
-	  sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$$(openssl rand -hex 24)|; \
-	          s|^GBCFMS_JWT_SECRET=.*|GBCFMS_JWT_SECRET=$$(openssl rand -base64 48 | tr -d '\n')|; \
-	          s|^GBCFMS_BACKUP_KEY=.*|GBCFMS_BACKUP_KEY=$$(openssl rand -base64 32)|" .env; \
-	  echo "أُنشئ .env — احفظ نسخة من GBCFMS_BACKUP_KEY خارج الخادم."; }
+init:  ## تجهيز مجلد النسخ الاحتياطية (الأسرار تُولَّد تلقائيًا عند أول تشغيل)
 	@mkdir -p backups && (chown 10001 backups 2>/dev/null || echo "نفّذ: sudo chown 10001 backups")
+	@test -f .env || echo "ملف .env اختياري (المنافذ، المساعد الذكي): cp deploy/env.example .env"
+
+backup-key:  ## عرض مفتاح تشفير النسخ الاحتياطية لحفظه خارج الخادم
+	$(COMPOSE) exec -T api entrypoint.sh backup-key
 
 certs:  ## شهادة موقعة ذاتيًا على المضيف (اختياري؛ الحاوية تولّد واحدة تلقائيًا إن لم توجد)
 	@mkdir -p deploy/certs
@@ -48,4 +47,4 @@ test:  ## اختبارات الخادم والواجهة محليًا (تتطل�
 	cd backend && .venv/bin/ruff check app tests && .venv/bin/pytest -n auto
 	cd frontend && npm run typecheck && npm test && npm run build
 
-.PHONY: help init certs build up bootstrap backup upgrade logs down test
+.PHONY: help init backup-key certs build up bootstrap backup upgrade logs down test

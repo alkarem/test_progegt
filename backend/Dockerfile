@@ -26,7 +26,8 @@ COPY alembic.ini ./
 COPY alembic ./alembic
 COPY app ./app
 COPY deploy/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN sed -i "s/\r$//" /usr/local/bin/entrypoint.sh && chmod +x /usr/local/bin/entrypoint.sh && mkdir -p /app/storage && chown -R gbcfms /app/storage
+RUN sed -i "s/\r$//" /usr/local/bin/entrypoint.sh && chmod +x /usr/local/bin/entrypoint.sh \
+ && mkdir -p /app/storage /secrets && chown -R gbcfms /app/storage /secrets && chmod 711 /secrets
 
 USER gbcfms
 EXPOSE 8000

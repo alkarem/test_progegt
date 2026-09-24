@@ -1,11 +1,13 @@
 # نشر الشبكة المحلية (15-deployment §1): nginx وحده منشور، والباقي على شبكة داخلية.
-# الإعداد في ملف .env بجوار هذا الملف (انظر deploy/env.example).
+# لا يلزم ملف .env: الأسرار تُولَّد تلقائيًا عند أول تشغيل في volume «secrets».
+# ملف .env اختياري لتغيير المنافذ أو تفعيل المساعد الذكي (انظر deploy/env.example).
 name: gbcfms
 
 x-backend-env: &backend-env
   GBCFMS_ENV: prod
-  GBCFMS_DATABASE_URL: postgresql+psycopg://gbcfms:${POSTGRES_PASSWORD:?اضبط POSTGRES_PASSWORD في .env}@db:5432/gbcfms
-  GBCFMS_JWT_SECRET: ${GBCFMS_JWT_SECRET:?اضبط GBCFMS_JWT_SECRET في .env}
+  # فارغة افتراضيًا فتُقرأ من الأسرار المولّدة؛ القيمة الصريحة في .env تتقدم عليها
+  GBCFMS_DATABASE_URL: ${GBCFMS_DATABASE_URL:-}
+  GBCFMS_JWT_SECRET: ${GBCFMS_JWT_SECRET:-}
   GBCFMS_BACKUP_KEY: ${GBCFMS_BACKUP_KEY:-}
   GBCFMS_STORAGE_DIR: /app/storage
   GBCFMS_MAX_UPLOAD_MB: ${GBCFMS_MAX_UPLOAD_MB:-20}
@@ -17,16 +19,28 @@ x-backend-env: &backend-env
   TZ: ${TZ:-Africa/Tripoli}
 
 services:
+  secrets:
+    build: ./backend
+    image: gbcfms-api:${GBCFMS_VERSION:-latest}
+    command: ["init-secrets"]
+    restart: "no"
+    volumes:
+      - secrets:/secrets
+    network_mode: none
+
   db:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
       POSTGRES_DB: gbcfms
       POSTGRES_USER: gbcfms
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?اضبط POSTGRES_PASSWORD في .env}
+      POSTGRES_PASSWORD_FILE: /secrets/postgres_password
       TZ: ${TZ:-Africa/Tripoli}
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - secrets:/secrets:ro
+    depends_on:
+      secrets: { condition: service_completed_successfully }
     networks: [internal]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U gbcfms -d gbcfms"]
@@ -35,7 +49,6 @@ services:
       retries: 10
 
   api:
-    build: ./backend
     image: gbcfms-api:${GBCFMS_VERSION:-latest}
     command: ["api"]
     restart: unless-stopped
@@ -45,6 +58,7 @@ services:
     volumes:
       - storage:/app/storage
       - ${BACKUP_DIR:-./backups}:/app/storage/backups
+      - secrets:/secrets:ro
     depends_on:
       db: { condition: service_healthy }
     networks: [internal]
@@ -57,6 +71,7 @@ services:
     volumes:
       - storage:/app/storage
       - ${BACKUP_DIR:-./backups}:/app/storage/backups
+      - secrets:/secrets:ro
     depends_on:
       api: { condition: service_healthy }
     networks: [internal]
@@ -86,3 +101,4 @@ volumes:
   pgdata:
   storage:
   certs:
+  secrets:

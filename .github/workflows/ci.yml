@@ -82,6 +82,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: التحقق من ملف Compose
-        run: POSTGRES_PASSWORD=ci GBCFMS_JWT_SECRET=ci docker compose config -q
+        run: docker compose config -q
       - name: بناء صور النشر
-        run: POSTGRES_PASSWORD=ci GBCFMS_JWT_SECRET=ci docker compose build
+        run: docker compose build
