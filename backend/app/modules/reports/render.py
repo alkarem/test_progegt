@@ -9,6 +9,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
+from app.core.errors import DomainError
 from app.modules.reports.engine import Column, ReportData
 
 FONTS = Path(__file__).parent / "fonts"
@@ -89,8 +90,17 @@ footer {{ margin-top: 8px; font-size: 7.5pt; color: #555; border-top: 1px solid 
 </body></html>"""
 
 
+class PdfUnavailable(DomainError):
+    status_code = 501
+    code = "PDF_UNAVAILABLE"
+
+
 def to_pdf(data: ReportData, *, generated_by: str) -> bytes:
-    from weasyprint import HTML
+    try:
+        from weasyprint import HTML
+    except (OSError, ImportError) as exc:   # على Windows دون مكتبات GTK/Pango
+        raise PdfUnavailable("تصدير PDF غير متاح في هذا التثبيت. استخدم «طباعة» ثم «حفظ بصيغة PDF» من المتصفح،"
+                             " أو صدّر Excel.") from exc
     return HTML(string=to_html(data, generated_by=generated_by, for_pdf=True), base_url=str(FONTS)).write_pdf()
 
 

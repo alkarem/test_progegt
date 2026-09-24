@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     lockout_minutes: int = 15
     storage_dir: str = "storage"
     max_upload_mb: int = 20
+    cookie_secure: bool | None = None   # None: آمن في الإنتاج. false فقط لتشغيل http داخل شبكة محلية بلا TLS
+    web_dir: str | None = None          # مجلد الواجهة المبنية ليقدّمها الخادم نفسه (التشغيل المباشر على Windows)
     backup_key: str | None = None   # base64 لمفتاح AES-256 (32 بايت)؛ بدونه تُحفظ النسخ غير مشفرة مع تحذير
 
     # المساعد الذكي (12-ai). معطل افتراضيًا؛ النظام المالي لا يعتمد عليه إطلاقًا.

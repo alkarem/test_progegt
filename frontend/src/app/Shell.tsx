@@ -1,10 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState, type FormEvent } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { api } from "@/api/client";
 import { useAuth } from "@/app/auth";
 import { useYear } from "@/app/year";
 import { ROLE } from "@/lib/labels";
+
+// صفحات لا تعتمد على سنة مالية مختارة: تعمل في التثبيت الجديد قبل إنشاء أول سنة
+// (وأهمها تغيير كلمة المرور الإلزامي وإنشاء السنة نفسها).
+const YEARLESS = ["/account", "/settings", "/settings/fiscal-years", "/settings/users", "/settings/workflow",
+  "/settings/backup", "/items", "/notifications", "/audit", "/approvals"];
+const yearless = (path: string) => path.startsWith("/account") || YEARLESS.includes(path);
 
 // القائمة الرئيسية (البند 32 من المتطلبات)
 const MENU: { to: string; label: string; icon: string; perm?: string }[] = [
@@ -27,6 +33,7 @@ const MENU: { to: string; label: string; icon: string; perm?: string }[] = [
 export function Shell() {
   const { me, can, logout } = useAuth();
   const { years, year, setYearId } = useYear();
+  const { pathname } = useLocation();
   const nav = useNavigate();
   const [q, setQ] = useState("");
   const { data: unread } = useQuery({
@@ -86,7 +93,7 @@ export function Shell() {
           </NavLink>
         </header>
         <main className="flex-1 p-5">
-          {!year ? <div className="card p-6 text-ink-mute">لا توجد سنة مالية بعد. {can("fiscal.manage") && <NavLink className="text-brand underline" to="/settings/fiscal-years">أنشئ سنة مالية</NavLink>}</div> : <Outlet />}
+          {!year && !yearless(pathname) ? <div className="card p-6 text-ink-mute">لا توجد سنة مالية بعد. {can("fiscal.manage") && <NavLink className="text-brand underline" to="/settings/fiscal-years">أنشئ سنة مالية</NavLink>}</div> : <Outlet />}
         </main>
       </div>
     </div>

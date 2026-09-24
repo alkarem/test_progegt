@@ -1,6 +1,8 @@
 """نقطة دخول الخادم: نظام مراقبة الاعتمادات والمصروفات الحكومية (GBCFMS)."""
+from pathlib import Path
+
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.config import get_settings
@@ -66,7 +68,28 @@ def create_app() -> FastAPI:
     def health():
         return JSONResponse({"status": "ok"})
 
+    if settings.web_dir and (Path(settings.web_dir) / "index.html").is_file():
+        _serve_web(app, Path(settings.web_dir).resolve())
     return app
+
+
+CSP = ("default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self';"
+       " connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
+
+
+def _serve_web(app: FastAPI, web: Path) -> None:
+    """تقديم الواجهة المبنية من الخادم نفسه عند التشغيل بدون nginx (Windows مباشرة)."""
+    index = web / "index.html"
+
+    @app.get("/{path:path}", include_in_schema=False)
+    def spa(path: str):
+        if path.startswith("api/"):
+            return JSONResponse({"type": "about:blank", "title": "غير موجود", "status": 404}, status_code=404)
+        target = (web / path).resolve()
+        if path and target.is_file() and web in target.parents:
+            cache = "public, max-age=31536000, immutable" if path.startswith("assets/") else "no-cache"
+            return FileResponse(target, headers={"Cache-Control": cache})
+        return FileResponse(index, headers={"Cache-Control": "no-cache", "Content-Security-Policy": CSP})
 
 
 app = create_app()

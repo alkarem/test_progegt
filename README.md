@@ -36,13 +36,38 @@ backend/    الخادم: app/modules/<الوحدة>/{models,service,router}.py�
 frontend/   الواجهة: src/features/<الشاشة>، src/components/ui.tsx، src/lib (المبالغ والتسميات)
 docs/       المخطط المهني (00–16)
 deploy/     قالب الإعدادات وشهادات TLS
-windows/    تثبيت وتشغيل بنقرتين على Windows
+windows/        تثبيت وتشغيل على Windows عبر Docker Desktop
+windows-local/  تثبيت وتشغيل على Windows مباشرة (PostgreSQL وPython مثبتان)، مع الواجهة مبنية مسبقًا
 docker-compose.yml · Makefile · .github/workflows/ci.yml
 ```
 
 ---
 
-## التشغيل على Windows
+## التشغيل على Windows مباشرة (بدون Docker)
+
+مناسب للأجهزة التي لا تدعم المحاكاة الافتراضية، أو التي يتوفر فيها PostgreSQL وPython مسبقًا.
+
+**المتطلبات:** PostgreSQL 13 أو أحدث، وخدمته تعمل، وكلمة مرور المستخدم `postgres` معروفة · Python 3.11 أو أحدث (مع خيار «Add python.exe to PATH») · اتصال إنترنت في التثبيت الأول فقط. لا يلزم Node.js، فالواجهة مبنية مسبقًا في `windows-local/web`.
+
+1. حمّل المشروع (Code ← Download ZIP) وفك الضغط في مجلد مثل `C:\GBCFMS`.
+2. افتح مجلد **`windows-local`** وانقر نقرتين على **`install.cmd`**. سيطلب منك:
+   - كلمة مرور المستخدم `postgres`، لينشئ مستخدمًا خاصًا بالنظام وقاعدة بيانات `gbcfms`.
+   - كلمة مرور جديدة للمسؤول `admin`.
+   ثم يعرض مفتاح تشفير النسخ الاحتياطية: **احفظه خارج الجهاز**.
+3. انقر نقرتين على **`start.cmd`**. يفتح المتصفح على `http://localhost:8080`. أبقِ النافذة مفتوحة أثناء العمل؛ إغلاقها يوقف النظام.
+
+| الملف (في `windows-local`) | الغرض |
+|---|---|
+| `start.cmd` | تشغيل النظام (يحدّث قاعدة البيانات تلقائيًا بعد أي تحديث) |
+| `backup.cmd` | نسخة احتياطية فورية في `data\backups`. النسخ اليومي يعمل تلقائيًا ما دام النظام يعمل |
+| `backup-key.cmd` | عرض مفتاح تشفير النسخ |
+
+**ملاحظات:**
+- الإعدادات والأسرار في `backend\.env`: لا تشاركه، واحفظ نسخة منه خارج الجهاز.
+- للوصول من أجهزة أخرى في الشبكة: `http://<اسم الجهاز أو عنوان IP>:8080`، مع السماح بالمنفذ 8080 في جدار حماية Windows.
+- تصدير PDF يحتاج مكتبات GTK غير الموجودة في Windows افتراضيًا. البديل: زر «طباعة» ثم «حفظ بصيغة PDF» من المتصفح، أو تصدير Excel.
+
+## التشغيل على Windows باستخدام Docker Desktop
 
 1. ثبّت **Docker Desktop** من https://www.docker.com/products/docker-desktop/ ، وأعد تشغيل الجهاز إن طُلب منك ذلك، ثم افتحه وانتظر حتى يعمل.
 2. حمّل المشروع: من صفحة المستودع على GitHub اختر الفرع `claude/brave-noether-pd8rpv` ثم **Code ← Download ZIP**، وفك الضغط في مجلد مثل `C:\GBCFMS`. أو استخدم `git clone` إن كان Git مثبتًا.

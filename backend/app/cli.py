@@ -5,11 +5,13 @@
 """
 import argparse
 import getpass
+import os
 import sys
 
 from sqlalchemy import select
 
 from app.core.db import SYSTEM_USER_ID, AuditContext, new_session, set_audit_context
+from app.core.errors import DomainError
 from app.core.security import hash_password, validate_password_policy
 from app.modules.users.models import User
 from app.modules.users.service import set_roles, sync_permissions_and_roles
@@ -22,7 +24,8 @@ def bootstrap(username: str, full_name: str, password: str | None) -> None:
         from app.modules.workflow.definitions import sync_workflow_definitions
         sync_workflow_definitions(s)
         if s.scalar(select(User).where(User.username == username)) is None:
-            password = password or getpass.getpass("كلمة مرور المسؤول: ")
+            # GBCFMS_ADMIN_PASSWORD لمثبتات تجمع كلمة المرور بنفسها (لا تظهر في قائمة العمليات)
+            password = password or os.environ.get("GBCFMS_ADMIN_PASSWORD") or getpass.getpass("كلمة مرور المسؤول: ")
             validate_password_policy(password, username)
             admin = User(username=username, full_name=full_name, password_hash=hash_password(password),
                          must_change_password=True)
@@ -90,14 +93,18 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("backup", help="نسخة احتياطية فورية مع التحقق")
     sub.add_parser("scheduler", help="تشغيل المجدول (نسخ يومي وتنبيهات كل ساعة)")
     args = parser.parse_args(argv)
-    if args.cmd == "bootstrap":
-        bootstrap(args.admin_username, args.admin_name, args.admin_password)
-    elif args.cmd == "seed-reference":
-        seed_reference()
-    elif args.cmd == "backup":
-        backup()
-    elif args.cmd == "scheduler":
-        scheduler()
+    try:
+        if args.cmd == "bootstrap":
+            bootstrap(args.admin_username, args.admin_name, args.admin_password)
+        elif args.cmd == "seed-reference":
+            seed_reference()
+        elif args.cmd == "backup":
+            backup()
+        elif args.cmd == "scheduler":
+            scheduler()
+    except DomainError as e:
+        print(e.message, file=sys.stderr)
+        return 2
     return 0
 
 

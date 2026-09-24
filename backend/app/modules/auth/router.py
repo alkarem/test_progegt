@@ -56,8 +56,10 @@ class SessionOut(BaseModel):
 
 
 def _set_cookie(response: Response, tokens: service.IssuedTokens) -> TokenOut:
+    s = get_settings()
+    secure = s.cookie_secure if s.cookie_secure is not None else s.env == "prod"
     response.set_cookie(REFRESH_COOKIE, tokens.refresh_token, httponly=True,
-                        secure=get_settings().env == "prod", samesite="strict", path=COOKIE_PATH,
+                        secure=secure, samesite="strict", path=COOKIE_PATH,
                         expires=tokens.refresh_expires_at.astimezone(UTC))
     return TokenOut(access_token=tokens.access_token, expires_in=tokens.expires_in,
                     must_change_password=tokens.must_change_password)

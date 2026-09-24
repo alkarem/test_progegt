@@ -21,3 +21,4 @@ backend/tests/imports/fixtures/
 deploy/certs/*
 !deploy/certs/.gitkeep
 backups/
+data/
