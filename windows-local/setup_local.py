@@ -80,20 +80,43 @@ def psql(pg_bin, conn, sql, db="postgres"):
     return r.stdout.strip()
 
 
+def _ask(prompt: str, default: str, digits: bool = False) -> str:
+    while True:
+        v = input(f"  {prompt} — اضغط Enter لاستخدام «{default}»: ").strip() or default
+        if not digits or v.isdigit():
+            return v
+        print(f"  «{v}» ليس رقمًا. المنفذ رقم مثل 5432.")
+
+
+def _explain(err: str) -> str:
+    low = err.lower()
+    if "password authentication failed" in low or "no password supplied" in low:
+        return "كلمة المرور غير صحيحة لهذا المستخدم."
+    if "does not exist" in low and "role" in low:
+        return "اسم المستخدم غير موجود في PostgreSQL."
+    if "connection refused" in low or "could not connect" in low or "timeout" in low:
+        return "لا يوجد PostgreSQL يعمل على هذا المنفذ. تأكد أن خدمة postgresql تعمل (services.msc) وأن المنفذ صحيح."
+    return err.splitlines()[-1] if err else "خطأ غير معروف"
+
+
 def setup_database(pg_bin: Path) -> dict:
-    print("سيُنشأ مستخدم خاص بالنظام في PostgreSQL. أدخل بيانات حساب المسؤول الذي أنشأته عند تثبيت PostgreSQL.")
-    conn = {"host": "localhost",
-            "port": input("  منفذ PostgreSQL [5432]: ").strip() or "5432",
-            "user": input("  اسم مستخدم المسؤول [postgres]: ").strip() or "postgres"}
-    for _ in range(3):
-        conn["password"] = getpass.getpass("  كلمة مرور المسؤول (لا تظهر أثناء الكتابة): ")
+    print("  يحتاج المثبت حساب مسؤول PostgreSQL الذي أنشأته عند تثبيته، ليُنشئ مستخدمًا وقاعدة بيانات خاصين بالنظام.")
+    print("  (في أغلب الأجهزة: المنفذ 5432 واسم المستخدم postgres — اضغط Enter لقبولهما)")
+    conn = {"host": "localhost", "port": "5432", "user": "postgres"}
+    version = None
+    for attempt in range(4):
+        conn["port"] = _ask("منفذ PostgreSQL (رقم)", conn["port"], digits=True)
+        conn["user"] = _ask("اسم مستخدم مسؤول PostgreSQL", conn["user"])
+        conn["password"] = getpass.getpass("  كلمة مرور هذا المستخدم (لا تظهر أثناء الكتابة): ")
         try:
             version = int(psql(pg_bin, conn, "SHOW server_version_num"))
             break
         except RuntimeError as e:
-            print(f"  تعذر الاتصال: {e.splitlines()[-1] if str(e) else e}")
-    else:
-        fail("تعذر الاتصال بـ PostgreSQL. تأكد أن خدمة postgresql تعمل وأن كلمة المرور صحيحة.")
+            print(f"\n  تعذر الاتصال: {_explain(str(e))}")
+            if attempt < 3:
+                print("  حاول مجددًا (القيم السابقة معروضة كافتراضية):\n")
+    if version is None:
+        fail("تعذر الاتصال بـ PostgreSQL. تأكد أن خدمة postgresql تعمل وأن البيانات صحيحة، ثم أعد تشغيل المثبت.")
     if version < 130000:
         fail(f"إصدار PostgreSQL قديم ({version // 10000}). المطلوب 13 أو أحدث.")
 
